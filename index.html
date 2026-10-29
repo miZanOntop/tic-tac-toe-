@@ -1,0 +1,554 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mind ❤️ Heart</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 24px 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #101b17;
+    color: #f4f5e9;
+    font-family: Arial, sans-serif;
+}
+
+.game {
+    width: 100%;
+    max-width: 430px;
+    text-align: center;
+}
+
+h1 {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+    margin: 0 0 8px;
+}
+
+.subtitle { color: #a8b9aa; }
+
+.settings {
+    display: flex;
+    gap: 10px;
+    margin: 24px 0 18px;
+}
+
+.setting {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.setting label {
+    display: block;
+    margin-bottom: 7px;
+    color: #b7d2b9;
+    font-size: .85rem;
+}
+
+select {
+    width: 100%;
+    padding: 11px 6px;
+    border-radius: 9px;
+    border: 1px solid #557b51;
+    background: #1c2c24;
+    color: white;
+}
+
+.scores {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.player {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #385643;
+    border-radius: 14px;
+    background: #1c2c24;
+}
+
+.symbol {
+    display: block;
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+}
+
+.score {
+    display: block;
+    margin-top: 7px;
+    font-size: 1.5rem;
+    color: #b7e4a3;
+}
+
+#status {
+    min-height: 25px;
+    color: #c5e7b5;
+    font-weight: bold;
+    margin: 18px 0;
+}
+
+/* The board is the base for our decorative vines. */
+.board {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 8px;
+    border: 1px solid #46694a;
+    border-radius: 24px;
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse at center, #203c2b, #14251b);
+    box-shadow: 0 0 35px #0005;
+}
+
+.vines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.cell {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: white;
+    font-size: clamp(2.5rem, 12vw, 4rem);
+    cursor: pointer;
+    border-radius: 15px;
+    transition: background .2s, transform .2s;
+}
+
+.cell:hover:empty {
+    background: #b7e4a318;
+}
+
+.cell:focus-visible {
+    outline: 2px solid #f4d78b;
+    outline-offset: -4px;
+}
+
+.cell.mind {
+    color: #8ed8ff;
+    text-shadow: 0 0 15px #64c8ff50;
+}
+
+.cell.heart {
+    color: #ff8297;
+    text-shadow: 0 0 15px #ff829750;
+}
+
+.cell.winner {
+    background: #b7e4a328;
+    animation: glow .7s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { background: #b7e4a315; }
+    to { background: #b7e4a345; }
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.action {
+    flex: 1;
+    padding: 13px 8px;
+    border-radius: 10px;
+    border: 1px solid #557b51;
+    background: #2b4034;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#restart {
+    background: #b7e4a3;
+    color: #142016;
+    border-color: #b7e4a3;
+}
+
+.note {
+    color: #82988a;
+    font-size: .8rem;
+    margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+<main class="game">
+    <h1>Mind <span style="color:#ff8297">♥</span> Heart</h1>
+    <p class="subtitle">Two minds. One board. Who wins?</p>
+
+    <div class="settings">
+        <div class="setting">
+            <label for="mode">Game mode</label>
+            <select id="mode">
+                <option value="ai">Play vs AI</option>
+                <option value="two">Two players</option>
+            </select>
+        </div>
+
+        <div class="setting" id="difficultySetting">
+            <label for="difficulty">AI difficulty</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+    </div>
+
+    <section class="scores">
+        <div class="player">
+            <span class="symbol">🧠</span>
+            Mind
+            <span class="score" id="mindScore">0</span>
+        </div>
+        <div class="player">
+            <span class="symbol">❤️</span>
+            <span id="heartName">Heart (AI)</span>
+            <span class="score" id="heartScore">0</span>
+        </div>
+    </section>
+
+    <p id="status" aria-live="polite">Your turn 🧠</p>
+
+    <section class="board" id="board" aria-label="Tic-Tac-Toe board">
+        <!-- Curved paths create the winding vine effect. -->
+        <svg class="vines" viewBox="0 0 300 300"
+             preserveAspectRatio="none" aria-hidden="true">
+            <g fill="none" stroke="#80ad70"
+               stroke-width="3" stroke-linecap="round">
+                <path d="M100 4 C76 35 119 63 99 100 S121 163 100 200 S79 264 101 296"/>
+                <path d="M200 4 C224 35 181 66 201 100 S179 165 200 200 S222 264 199 296"/>
+                <path d="M4 100 C35 77 66 120 100 100 S163 78 200 100 S264 122 296 99"/>
+                <path d="M4 200 C35 222 65 179 100 200 S163 222 200 200 S264 179 296 201"/>
+            </g>
+            <g fill="#9bc785">
+                <ellipse cx="88" cy="34" rx="5" ry="10" transform="rotate(-35 88 34)"/>
+                <ellipse cx="111" cy="68" rx="5" ry="10" transform="rotate(35 111 68)"/>
+                <ellipse cx="211" cy="43" rx="5" ry="10" transform="rotate(35 211 43)"/>
+                <ellipse cx="188" cy="166" rx="5" ry="10" transform="rotate(-35 188 166)"/>
+                <ellipse cx="43" cy="89" rx="5" ry="10" transform="rotate(-60 43 89)"/>
+                <ellipse cx="257" cy="110" rx="5" ry="10" transform="rotate(60 257 110)"/>
+                <ellipse cx="64" cy="212" rx="5" ry="10" transform="rotate(40 64 212)"/>
+                <ellipse cx="244" cy="187" rx="5" ry="10" transform="rotate(-40 244 187)"/>
+            </g>
+            <g fill="#d4e5a2">
+                <circle cx="100" cy="100" r="3"/>
+                <circle cx="200" cy="200" r="3"/>
+                <circle cx="200" cy="100" r="3"/>
+                <circle cx="100" cy="200" r="3"/>
+            </g>
+        </svg>
+
+        <button class="cell" data-index="0" aria-label="Cell 1"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9"></button>
+    </section>
+
+    <div class="buttons">
+        <button class="action" id="restart">Play Again</button>
+        <button class="action" id="resetScores">Reset Scores</button>
+    </div>
+
+    <p class="note">Made with logic and a little heart. 🌿</p>
+</main>
+
+<script>
+const cells = [...document.querySelectorAll(".cell")];
+const status = document.getElementById("status");
+const mindScore = document.getElementById("mindScore");
+const heartScore = document.getElementById("heartScore");
+const modeSelect = document.getElementById("mode");
+const difficultySelect = document.getElementById("difficulty");
+const difficultySetting = document.getElementById("difficultySetting");
+const heartName = document.getElementById("heartName");
+
+let board = Array(9).fill("");
+let currentPlayer = "mind";
+let gameOver = false;
+let thinking = false;
+let scores = { mind: 0, heart: 0 };
+let roundId = 0;
+
+const symbols = { mind: "🧠", heart: "❤️" };
+
+const winningLines = [
+    [0,1,2], [3,4,5], [6,7,8],
+    [0,3,6], [1,4,7], [2,5,8],
+    [0,4,8], [2,4,6]
+];
+
+function getWinningLine(position) {
+    return winningLines.find(line =>
+        position[line[0]] &&
+        position[line[0]] === position[line[1]] &&
+        position[line[1]] === position[line[2]]
+    );
+}
+
+function emptyCells(position) {
+    return position
+        .map((value, index) => value === "" ? index : -1)
+        .filter(index => index !== -1);
+}
+
+function aiMove() {
+    const available = emptyCells(board);
+    if (!available.length) return null;
+
+    const difficulty = difficultySelect.value;
+
+    // EASY: choose any empty cell.
+    if (difficulty === "easy") {
+        return available[Math.floor(Math.random() * available.length)];
+    }
+
+    // MEDIUM: win if possible, otherwise block an immediate loss.
+    if (difficulty === "medium") {
+        for (const player of ["heart", "mind"]) {
+            for (const index of available) {
+                const trial = [...board];
+                trial[index] = player;
+
+                if (getWinningLine(trial)) {
+                    return index;
+                }
+            }
+        }
+
+        // Otherwise prefer the center, then a random available cell.
+        if (board[4] === "") return 4;
+        return available[Math.floor(Math.random() * available.length)];
+    }
+
+    // HARD: minimax searches possible future moves.
+    function minimax(position, player) {
+        if (getWinningLine(position)) {
+            const winner = getWinningLine(position);
+            return position[winner[0]] === "heart" ? 10 : -10;
+        }
+
+        const open = emptyCells(position);
+        if (!open.length) return 0;
+
+        if (player === "heart") {
+            let best = -Infinity;
+
+            for (const index of open) {
+                position[index] = "heart";
+                best = Math.max(best, minimax(position, "mind"));
+                position[index] = "";
+            }
+
+            return best;
+        }
+
+        let best = Infinity;
+
+        for (const index of open) {
+            position[index] = "mind";
+            best = Math.min(best, minimax(position, "heart"));
+            position[index] = "";
+        }
+
+        return best;
+    }
+
+    let bestScore = -Infinity;
+    let bestMoves = [];
+
+    for (const index of available) {
+        board[index] = "heart";
+        const score = minimax(board, "mind");
+        board[index] = "";
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestMoves = [index];
+        } else if (score === bestScore) {
+            bestMoves.push(index);
+        }
+    }
+
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+}
+
+function renderCell(index) {
+    const cell = cells[index];
+    cell.textContent = symbols[board[index]] || "";
+    cell.classList.toggle("mind", board[index] === "mind");
+    cell.classList.toggle("heart", board[index] === "heart");
+    cell.setAttribute(
+        "aria-label",
+        "Cell " + (index + 1) + (board[index] ? ": " + board[index] : ": empty")
+    );
+}
+
+function updateStatus() {
+    if (gameOver || thinking) return;
+
+    status.textContent = modeSelect.value === "ai"
+        ? "Your turn 🧠"
+        : (currentPlayer === "mind" ? "Mind's turn 🧠" : "Heart's turn ❤️");
+}
+
+function finishRound(winnerLine) {
+    gameOver = true;
+
+    if (winnerLine) {
+        const winner = board[winnerLine[0]];
+
+        scores[winner]++;
+        mindScore.textContent = scores.mind;
+        heartScore.textContent = scores.heart;
+
+        winnerLine.forEach(index => cells[index].classList.add("winner"));
+
+        status.textContent = winner === "mind"
+            ? "🧠 Mind wins! 🎉"
+            : (modeSelect.value === "ai"
+                ? "❤️ Heart wins! Try again!"
+                : "❤️ Heart wins! 🎉");
+    } else {
+        status.textContent = "It's a draw! 🤝";
+    }
+}
+
+function makeMove(index) {
+    if (gameOver || thinking || board[index] !== "") return;
+
+    if (modeSelect.value === "ai" && currentPlayer !== "mind") return;
+
+    board[index] = currentPlayer;
+    renderCell(index);
+
+    const winnerLine = getWinningLine(board);
+
+    if (winnerLine) {
+        finishRound(winnerLine);
+        return;
+    }
+
+    if (emptyCells(board).length === 0) {
+        finishRound(null);
+        return;
+    }
+
+    currentPlayer = currentPlayer === "mind" ? "heart" : "mind";
+
+    if (modeSelect.value === "ai" && currentPlayer === "heart") {
+        thinking = true;
+        status.textContent = "Heart is thinking... 🤔";
+        const thisRound = roundId;
+
+        // A short pause makes the computer's move feel natural.
+        setTimeout(() => {
+            if (thisRound !== roundId || gameOver) return;
+
+            const index = aiMove();
+            if (index === null) return;
+
+            board[index] = "heart";
+            renderCell(index);
+
+            const line = getWinningLine(board);
+
+            if (line) {
+                finishRound(line);
+                thinking = false;
+                return;
+            }
+
+            if (emptyCells(board).length === 0) {
+                finishRound(null);
+                thinking = false;
+                return;
+            }
+
+            currentPlayer = "mind";
+            thinking = false;
+            updateStatus();
+        }, 350);
+
+        return;
+    }
+
+    updateStatus();
+}
+
+function restartGame() {
+    roundId++;
+    board = Array(9).fill("");
+    currentPlayer = "mind";
+    gameOver = false;
+    thinking = false;
+
+    cells.forEach((cell, index) => {
+        cell.classList.remove("mind", "heart", "winner");
+        cell.textContent = "";
+        cell.setAttribute("aria-label", "Cell " + (index + 1) + ": empty");
+    });
+
+    updateStatus();
+}
+
+function updateMode() {
+    difficultySetting.hidden = modeSelect.value !== "ai";
+    heartName.textContent = modeSelect.value === "ai" ? "Heart (AI)" : "Heart";
+    restartGame();
+}
+
+cells.forEach((cell, index) => {
+    cell.addEventListener("click", () => makeMove(index));
+});
+
+document.getElementById("restart").addEventListener("click", restartGame);
+
+document.getElementById("resetScores").addEventListener("click", () => {
+    scores = { mind: 0, heart: 0 };
+    mindScore.textContent = "0";
+    heartScore.textContent = "0";
+    restartGame();
+});
+
+modeSelect.addEventListener("change", updateMode);
+difficultySelect.addEventListener("change", restartGame);
+
+updateMode();
+</script>
+</body>
+</html>
